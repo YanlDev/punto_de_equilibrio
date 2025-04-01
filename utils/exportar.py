@@ -7,6 +7,8 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 import matplotlib.pyplot as plt
 import pandas as pd
+import tempfile
+from io import BytesIO
 
 
 def exportar_a_pdf(modelo, ruta_archivo=None, incluir_graficos=True):
@@ -166,13 +168,16 @@ def exportar_a_pdf(modelo, ruta_archivo=None, incluir_graficos=True):
         ax.grid(True, linestyle='--', alpha=0.7)
         ax.legend()
         
-        # Guardar temporalmente y añadir al PDF
-        ruta_tmp_grafico = "temp_grafico_pe.png"
-        plt.savefig(ruta_tmp_grafico, dpi=300, bbox_inches='tight')
+        # Guardar gráfico en memoria en lugar de en un archivo
+        buffer = BytesIO()
+        plt.savefig(buffer, format='png', dpi=300, bbox_inches='tight')
         plt.close(fig)
         
-        # Añadir imagen al PDF
-        elementos.append(Image(ruta_tmp_grafico, width=6*inch, height=4*inch))
+        # Devolver el puntero al inicio del buffer
+        buffer.seek(0)
+        
+        # Usar directamente el buffer como fuente de imagen
+        elementos.append(Image(buffer, width=6*inch, height=4*inch))
         elementos.append(Spacer(1, 0.2 * inch))
         
         # Añadir leyenda del gráfico
@@ -181,10 +186,6 @@ def exportar_a_pdf(modelo, ruta_archivo=None, incluir_graficos=True):
             f"con un valor de ventas de ${pe_valor:.2f}.",
             estilo_normal
         ))
-        
-        # Eliminar archivo temporal
-        if os.path.exists(ruta_tmp_grafico):
-            os.remove(ruta_tmp_grafico)
     
     # Añadir interpretación
     elementos.append(Spacer(1, 0.3 * inch))
