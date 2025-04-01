@@ -190,3 +190,23 @@ class FrameDatosEntrada(ttk.Frame):
         self.precio_venta_var.set("")
         self.costo_variable_var.set("")
         self.unidades_esperadas_var.set("")
+
+    def actualizar_campos_desde_modelo(self):
+        """Actualiza los campos de entrada con los datos del modelo actual."""
+        modelo = self.controlador.modelo
+        
+        # Actualizar costos fijos
+        if modelo["costos_fijos"] > 0:
+            self.costos_fijos_var.set(str(modelo["costos_fijos"]))
+        
+        # Actualizar precio de venta
+        if modelo["precio_venta"] > 0:
+            self.precio_venta_var.set(str(modelo["precio_venta"]))
+        
+        # Actualizar costo variable
+        if modelo["costo_variable"] > 0:
+            self.costo_variable_var.set(str(modelo["costo_variable"]))
+        
+        # Actualizar unidades esperadas
+        if modelo.get("unidades_esperadas", 0) > 0:
+            self.unidades_esperadas_var.set(str(modelo["unidades_esperadas"]))

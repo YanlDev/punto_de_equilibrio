@@ -1,0 +1,72 @@
+
+            MANUAL DE USUARIO - ANALIZADOR DE PUNTO DE EQUILIBRIO
+            ====================================================
+
+            INTRODUCCIÓN
+            -----------
+            Esta aplicación permite realizar análisis de punto de equilibrio,
+            una herramienta fundamental para la toma de decisiones financieras
+            y de gestión empresarial.
+
+            FUNCIONALIDADES PRINCIPALES
+            --------------------------
+            1. Cálculo del Punto de Equilibrio
+               - En unidades
+               - En valor monetario
+
+            2. Análisis de Sensibilidad
+               - Evaluar el impacto de cambios en costos fijos, precio de venta
+                 y costo variable unitario
+
+            3. Análisis Multiproducto
+               - Calcular el punto de equilibrio para múltiples productos
+
+            4. Visualización Gráfica
+               - Gráficos de punto de equilibrio
+               - Utilidad vs. Volumen
+               - Margen de Contribución
+
+            CÓMO UTILIZAR LA APLICACIÓN
+            --------------------------
+            1. Datos de Entrada:
+               - Ingrese los costos fijos totales
+               - Ingrese el precio de venta unitario
+               - Ingrese el costo variable unitario
+               - Opcionalmente, ingrese las unidades esperadas de venta
+               - Haga clic en "Calcular Punto de Equilibrio"
+
+            2. Resultados:
+               - Vea el punto de equilibrio en unidades y valor
+               - Consulte el margen de seguridad
+               - Analice la utilidad estimada
+
+            3. Gráficos:
+               - Seleccione el tipo de gráfico que desea visualizar
+               - Interprete la información proporcionada
+
+            4. Análisis de Sensibilidad:
+               - Seleccione la variable a analizar
+               - Establezca los rangos de variación
+               - Interprete cómo afectan los cambios al punto de equilibrio
+
+            5. Análisis Multiproducto:
+               - Agregue los diferentes productos
+               - Establezca el mix de ventas
+               - Calcule el punto de equilibrio combinado
+
+            GUARDAR Y CARGAR ESCENARIOS
+            --------------------------
+            - Utilice el menú "Archivo" para guardar el escenario actual
+            - Cargue escenarios previamente guardados para continuar su análisis
+
+            EXPORTAR RESULTADOS
+            ------------------
+            - Exporte a PDF para informes formales
+            - Exporte a Excel para análisis adicionales
+
+            CONTACTO Y SOPORTE
+            -----------------
+            Para soporte técnico o consultas sobre la aplicación:
+            - Email: soporte@analizadorpe.com
+            - Teléfono: (01) 234-5678
+            

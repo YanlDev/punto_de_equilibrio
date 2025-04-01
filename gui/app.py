@@ -5,8 +5,14 @@ Módulo principal para la interfaz gráfica de la aplicación de análisis de pu
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
+from tkinter import filedialog
 import os
 import sys
+import datetime
+
+# Para las funcionalidades de guardar/cargar
+from utils.guardar_cargar import guardar_escenario as guardar, cargar_escenario as cargar
+from utils.exportar import exportar_a_pdf, exportar_a_excel
 
 # Añadir el directorio raíz al path para importar módulos
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -236,24 +242,123 @@ class AplicacionPuntoEquilibrio:
             self.notebook.select(0)  # Volver a la pestaña de datos de entrada
     
     def guardar_escenario(self):
-        """Guarda el escenario actual."""
-        # Esta funcionalidad se implementará más adelante
-        messagebox.showinfo("Información", "Funcionalidad en desarrollo")
-    
+        # Verificar si hay datos para guardar
+        if self.modelo["analizador"] is None:
+            messagebox.showinfo("Información", 
+                               "Primero debe calcular el punto de equilibrio para guardar el escenario.")
+            return
+
+        # Solicitar nombre para el escenario
+        nombre_escenario = filedialog.asksaveasfilename(
+            defaultextension=".peq",
+            filetypes=[("Archivos de Punto de Equilibrio", "*.peq"), ("Todos los archivos", "*.*")],
+            title="Guardar escenario como"
+        )
+
+        if not nombre_escenario:
+            return  # El usuario canceló
+
+        # Guardar escenario utilizando la función de utilidad
+        ruta_guardado = guardar(self.modelo, nombre_escenario)
+
+        if ruta_guardado:
+            messagebox.showinfo("Guardar escenario", 
+                               f"Escenario guardado correctamente en:\n{ruta_guardado}")
+
     def cargar_escenario(self):
         """Carga un escenario guardado."""
-        # Esta funcionalidad se implementará más adelante
-        messagebox.showinfo("Información", "Funcionalidad en desarrollo")
+        # Solicitar archivo a cargar
+        ruta_archivo = filedialog.askopenfilename(
+            filetypes=[("Archivos de Punto de Equilibrio", "*.peq"), ("Todos los archivos", "*.*")],
+            title="Cargar escenario"
+        )
+
+        if not ruta_archivo:
+            return  # El usuario canceló
+
+        # Cargar escenario utilizando la función de utilidad
+        modelo_cargado = cargar(ruta_archivo)
+
+        if modelo_cargado:
+            # Actualizar el modelo con los datos cargados
+            self.modelo.update(modelo_cargado)
+
+            # Recrear el analizador si los datos básicos están disponibles
+            if (self.modelo["costos_fijos"] > 0 and self.modelo["precio_venta"] > 0 and 
+                self.modelo["costo_variable"] > 0):
+                from core.equilibrio import AnalizadorEquilibrio
+                self.modelo["analizador"] = AnalizadorEquilibrio(
+                    costos_fijos=self.modelo["costos_fijos"],
+                    precio_venta=self.modelo["precio_venta"],
+                    costo_variable_unitario=self.modelo["costo_variable"]
+                )
+
+                # Regenerar datos para gráficos si no existen
+                if self.modelo["datos_grafico"] is None and self.modelo["analizador"] is not None:
+                    self.modelo["datos_grafico"] = self.modelo["analizador"].generar_datos_grafico(
+                        unidades_max=self.modelo["unidades_esperadas"] * 1.2 
+                        if self.modelo["unidades_esperadas"] > 0 else None
+                    )
+
+            # Actualizar la interfaz con los datos cargados
+            self.frame_datos.actualizar_campos_desde_modelo()
+            self.actualizar_vistas()
+
+            messagebox.showinfo("Cargar escenario", "Escenario cargado correctamente.")
     
     def exportar_pdf(self):
         """Exporta los resultados a PDF."""
-        # Esta funcionalidad se implementará más adelante
-        messagebox.showinfo("Información", "Funcionalidad en desarrollo")
-    
+        # Verificar si hay resultados para exportar
+        if not self.modelo["resultados"]:
+            messagebox.showinfo("Información", 
+                               "Primero debe calcular el punto de equilibrio para exportar los resultados.")
+            return
+
+        # Solicitar ubicación para guardar el PDF
+        ruta_archivo = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("Archivos PDF", "*.pdf"), ("Todos los archivos", "*.*")],
+            title="Exportar a PDF"
+        )
+
+        if not ruta_archivo:
+            return  # El usuario canceló
+
+        # Exportar a PDF utilizando la función de utilidad
+        try:
+            ruta_exportada = exportar_a_pdf(self.modelo, ruta_archivo)
+            messagebox.showinfo("Exportar a PDF", 
+                               f"Informe exportado correctamente a:\n{ruta_exportada}")
+        except Exception as e:
+            messagebox.showerror("Error al exportar", 
+                                f"Ocurrió un error al exportar a PDF: {str(e)}")
+
     def exportar_excel(self):
         """Exporta los resultados a Excel."""
-        # Esta funcionalidad se implementará más adelante
-        messagebox.showinfo("Información", "Funcionalidad en desarrollo")
+        # Verificar si hay resultados para exportar
+        if not self.modelo["resultados"]:
+            messagebox.showinfo("Información", 
+                               "Primero debe calcular el punto de equilibrio para exportar los resultados.")
+            return
+
+        # Solicitar ubicación para guardar el Excel
+        ruta_archivo = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            filetypes=[("Archivos Excel", "*.xlsx"), ("Todos los archivos", "*.*")],
+            title="Exportar a Excel"
+        )
+
+        if not ruta_archivo:
+            return  # El usuario canceló
+
+        # Exportar a Excel utilizando la función de utilidad
+        try:
+            ruta_exportada = exportar_a_excel(self.modelo, ruta_archivo)
+            messagebox.showinfo("Exportar a Excel", 
+                               f"Datos exportados correctamente a:\n{ruta_exportada}")
+        except Exception as e:
+            messagebox.showerror("Error al exportar", 
+                                f"Ocurrió un error al exportar a Excel: {str(e)}")
     
     def mostrar_acerca_de(self):
         """Muestra información sobre la aplicación."""
@@ -266,5 +371,130 @@ class AplicacionPuntoEquilibrio:
     
     def mostrar_manual(self):
         """Muestra el manual de uso."""
-        # Esta funcionalidad se implementará más adelante
-        messagebox.showinfo("Información", "Funcionalidad en desarrollo")
+        # Crear una nueva ventana para el manual
+        import tkinter as tk
+        from tkinter import ttk
+        import os
+
+        # Verificar si existe el directorio para el manual
+        if not os.path.exists("assets/docs"):
+            os.makedirs("assets/docs")
+
+        # Verificar si existe el archivo del manual (si no, crearlo)
+        ruta_manual = "assets/docs/manual_usuario.txt"
+        if not os.path.exists(ruta_manual):
+            # Crear contenido básico del manual
+            contenido_manual = """
+            MANUAL DE USUARIO - ANALIZADOR DE PUNTO DE EQUILIBRIO
+            ====================================================
+
+            INTRODUCCIÓN
+            -----------
+            Esta aplicación permite realizar análisis de punto de equilibrio,
+            una herramienta fundamental para la toma de decisiones financieras
+            y de gestión empresarial.
+
+            FUNCIONALIDADES PRINCIPALES
+            --------------------------
+            1. Cálculo del Punto de Equilibrio
+               - En unidades
+               - En valor monetario
+
+            2. Análisis de Sensibilidad
+               - Evaluar el impacto de cambios en costos fijos, precio de venta
+                 y costo variable unitario
+
+            3. Análisis Multiproducto
+               - Calcular el punto de equilibrio para múltiples productos
+
+            4. Visualización Gráfica
+               - Gráficos de punto de equilibrio
+               - Utilidad vs. Volumen
+               - Margen de Contribución
+
+            CÓMO UTILIZAR LA APLICACIÓN
+            --------------------------
+            1. Datos de Entrada:
+               - Ingrese los costos fijos totales
+               - Ingrese el precio de venta unitario
+               - Ingrese el costo variable unitario
+               - Opcionalmente, ingrese las unidades esperadas de venta
+               - Haga clic en "Calcular Punto de Equilibrio"
+
+            2. Resultados:
+               - Vea el punto de equilibrio en unidades y valor
+               - Consulte el margen de seguridad
+               - Analice la utilidad estimada
+
+            3. Gráficos:
+               - Seleccione el tipo de gráfico que desea visualizar
+               - Interprete la información proporcionada
+
+            4. Análisis de Sensibilidad:
+               - Seleccione la variable a analizar
+               - Establezca los rangos de variación
+               - Interprete cómo afectan los cambios al punto de equilibrio
+
+            5. Análisis Multiproducto:
+               - Agregue los diferentes productos
+               - Establezca el mix de ventas
+               - Calcule el punto de equilibrio combinado
+
+            GUARDAR Y CARGAR ESCENARIOS
+            --------------------------
+            - Utilice el menú "Archivo" para guardar el escenario actual
+            - Cargue escenarios previamente guardados para continuar su análisis
+
+            EXPORTAR RESULTADOS
+            ------------------
+            - Exporte a PDF para informes formales
+            - Exporte a Excel para análisis adicionales
+
+            CONTACTO Y SOPORTE
+            -----------------
+            Para soporte técnico o consultas sobre la aplicación:
+            - Email: soporte@analizadorpe.com
+            - Teléfono: (01) 234-5678
+            """
+
+            # Guardar el manual en el archivo
+            with open(ruta_manual, "w") as f:
+                f.write(contenido_manual)
+
+        # Crear ventana para mostrar el manual
+        ventana_manual = tk.Toplevel(self.root)
+        ventana_manual.title("Manual de Usuario")
+        ventana_manual.geometry("700x500")
+        ventana_manual.minsize(600, 400)
+
+        # Configurar estilo
+        frame_manual = ttk.Frame(ventana_manual, padding="10")
+        frame_manual.pack(fill=tk.BOTH, expand=True)
+
+        # Cargar el contenido del manual
+        with open(ruta_manual, "r") as f:
+            contenido = f.read()
+
+        # Crear widget de texto para mostrar el manual
+        texto_manual = tk.Text(frame_manual, wrap=tk.WORD, padx=10, pady=10)
+        scrollbar = ttk.Scrollbar(frame_manual, orient="vertical", command=texto_manual.yview)
+        texto_manual.configure(yscrollcommand=scrollbar.set)
+
+        # Empaquetar widgets
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        texto_manual.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # Insertar contenido
+        texto_manual.insert(tk.END, contenido)
+        texto_manual.config(state=tk.DISABLED)  # Solo lectura
+
+        # Botón para cerrar
+        ttk.Button(ventana_manual, text="Cerrar", command=ventana_manual.destroy).pack(pady=10)
+
+        # Centrar la ventana en la pantalla
+        ventana_manual.update_idletasks()
+        ancho = ventana_manual.winfo_width()
+        alto = ventana_manual.winfo_height()
+        x = (ventana_manual.winfo_screenwidth() // 2) - (ancho // 2)
+        y = (ventana_manual.winfo_screenheight() // 2) - (alto // 2)
+        ventana_manual.geometry(f"{ancho}x{alto}+{x}+{y}")
