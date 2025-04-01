@@ -40,6 +40,7 @@ class FrameMultiProducto(ttk.Frame):
         # Variables para los gráficos
         self.figure = None
         self.canvas = None
+        self.resultados_calculados = None
         
         # Crear widgets
         self.crear_widgets()
@@ -135,47 +136,22 @@ class FrameMultiProducto(ttk.Frame):
         ttk.Button(frame_parametros, text="Calcular Punto de Equilibrio", 
                   command=self.calcular_multiproducto).pack(side=tk.LEFT, padx=30)
         
-        # Frame para resultados y gráficos
+        # Botón para ver gráfico detallado
+        ttk.Button(frame_parametros, text="Ver Gráfico Detallado", 
+                  command=self.mostrar_grafico_detallado).pack(side=tk.LEFT, padx=5)
+        
+        # Frame para resultados de texto completo (sin gráfico en este frame)
         frame_resultados = ttk.LabelFrame(self, text="Resultados Multiproducto")
         frame_resultados.grid(row=2, column=0, padx=20, pady=10, sticky="nsew")
         
-        # Dividir en dos áreas: tabla de resultados y gráfico
-        frame_resultados.columnconfigure(0, weight=4)
-        frame_resultados.columnconfigure(1, weight=6)
-        frame_resultados.rowconfigure(0, weight=1)
-        
-        # Área para tabla de resultados
-        frame_tabla_resultados = ttk.Frame(frame_resultados)
-        frame_tabla_resultados.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-        
-        # Crear tabla para mostrar resultados
-        self.texto_resultados = tk.Text(frame_tabla_resultados, width=40, height=20)
+        # Área para texto de resultados que ocupa todo el ancho
+        self.texto_resultados = tk.Text(frame_resultados, width=80, height=20)
         scrollbar_resultados = ttk.Scrollbar(
-            frame_tabla_resultados, orient=tk.VERTICAL, command=self.texto_resultados.yview)
+            frame_resultados, orient=tk.VERTICAL, command=self.texto_resultados.yview)
         self.texto_resultados.configure(yscroll=scrollbar_resultados.set)
         
-        self.texto_resultados.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar_resultados.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # Área para gráfico
-        frame_grafico = ttk.Frame(frame_resultados)
-        frame_grafico.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
-        
-        # Inicializar el gráfico
-        self.figure, self.ax = plt.subplots(figsize=(6, 5), tight_layout=True)
-        self.canvas = FigureCanvasTkAgg(self.figure, frame_grafico)
-        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        
-        # Mostrar mensaje inicial en el gráfico
-        self.ax.text(
-            0.5, 0.5, 
-            "Agregue productos y calcule el\npunto de equilibrio multiproducto", 
-            ha='center', va='center', 
-            fontsize=12
-        )
-        self.ax.set_xticks([])
-        self.ax.set_yticks([])
-        self.canvas.draw()
+        self.texto_resultados.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
     
     def agregar_producto(self):
         """Agrega un nuevo producto a la lista."""
@@ -270,7 +246,11 @@ class FrameMultiProducto(ttk.Frame):
                 raise ValueError(f"La suma de los porcentajes de mix debe ser 100%. Actual: {suma_mix * 100:.1f}%")
             
             # Obtener costos fijos totales
-            costos_fijos = float(self.costos_fijos_var.get())
+            try:
+                costos_fijos = float(costos_fijos_texto)
+            except ValueError:
+                raise ValueError("El valor de Costos Fijos Totales debe ser un número válido.")
+
             if costos_fijos <= 0:
                 raise ValueError("Los costos fijos deben ser mayores que cero.")
             
@@ -282,11 +262,14 @@ class FrameMultiProducto(ttk.Frame):
             # Calcular punto de equilibrio
             resultados = calcular_punto_equilibrio_multiproducto(productos_con_cf)
             
+            # Guardar resultados para uso posterior
+            self.resultados_calculados = resultados
+            
             # Mostrar resultados
             self.mostrar_resultados_multiproducto(resultados)
             
-            # Graficar resultados
-            self.graficar_resultados_multiproducto(resultados)
+            # Mostrar gráfico detallado en una ventana separada
+            self.mostrar_grafico_detallado()
             
             return True
             
@@ -316,28 +299,103 @@ class FrameMultiProducto(ttk.Frame):
         # Tabla de resultados por producto
         texto += "DETALLE POR PRODUCTO\n"
         texto += "=" * 40 + "\n\n"
-        texto += f"{'Producto':<15} {'PE Unid.':<10} {'PE Valor':<15}\n"
-        texto += "-" * 40 + "\n"
+        texto += f"{'Producto':<20} {'PE Unid.':<15} {'PE Valor':<15} {'% del Total':<15}\n"
+        texto += "-" * 65 + "\n"
         
         for producto in resultados['productos']:
             nombre = producto['nombre']
-            if len(nombre) > 14:
-                nombre = nombre[:11] + "..."
+            if len(nombre) > 19:
+                nombre = nombre[:16] + "..."
             
-            texto += f"{nombre:<15} {producto['pe_unidades']:<10.2f} ${producto['pe_valor']:<14.2f}\n"
+            unidades = producto['pe_unidades']
+            valor = producto['pe_valor']
+            porcentaje_valor = (valor / resultados['pe_valor_total']) * 100
+            
+            texto += f"{nombre:<20} {unidades:<15.2f} ${valor:<14.2f} {porcentaje_valor:<14.2f}%\n"
+        
+        # Añadir análisis adicional
+        texto += "\n\nANÁLISIS ADICIONAL\n"
+        texto += "=" * 40 + "\n\n"
+        
+        # Calcular márgenes de contribución
+        texto += "MÁRGENES DE CONTRIBUCIÓN\n"
+        texto += "-" * 40 + "\n"
+        
+        for producto in self.productos:
+            nombre = producto['nombre']
+            if len(nombre) > 19:
+                nombre = nombre[:16] + "..."
+            
+            margen = producto['precio_venta'] - producto['costo_variable']
+            porcentaje = (margen / producto['precio_venta']) * 100
+            
+            texto += f"{nombre:<20} ${margen:<15.2f} ({porcentaje:<5.2f}% del precio)\n"
         
         # Insertar texto en el widget
         self.texto_resultados.insert(tk.END, texto)
     
-    def graficar_resultados_multiproducto(self, resultados):
+    def mostrar_grafico_detallado(self):
+        """Muestra el gráfico de resultados en una ventana separada con más detalle."""
+        if not self.resultados_calculados:
+            messagebox.showinfo(
+                "Información", 
+                "Primero debe calcular el punto de equilibrio multiproducto."
+            )
+            return
+        
+        # Crear una nueva ventana para el gráfico detallado
+        ventana_grafico = tk.Toplevel(self.master)
+        ventana_grafico.title("Gráfico Detallado - Punto de Equilibrio Multiproducto")
+        ventana_grafico.geometry("900x600")
+        ventana_grafico.minsize(800, 600)
+        
+        # Crear frame contenedor
+        frame_principal = ttk.Frame(ventana_grafico, padding=10)
+        frame_principal.pack(fill=tk.BOTH, expand=True)
+        
+        # Título
+        ttk.Label(
+            frame_principal, 
+            text="Análisis Gráfico del Punto de Equilibrio Multiproducto",
+            font=("Arial", 11, "bold")
+        ).pack(pady=(0, 20))
+        
+        # Crear frame para el gráfico
+        frame_grafico = ttk.Frame(frame_principal)
+        frame_grafico.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Crear gráfico detallado
+        self.crear_grafico_detallado(frame_grafico)
+        
+        # Botón para cerrar
+        ttk.Button(
+            frame_principal, 
+            text="Cerrar", 
+            command=ventana_grafico.destroy
+        ).pack(pady=10)
+        
+        # Centrar la ventana
+        ventana_grafico.update_idletasks()
+        ancho = ventana_grafico.winfo_width()
+        alto = ventana_grafico.winfo_height()
+        x = (ventana_grafico.winfo_screenwidth() // 2) - (ancho // 2)
+        y = (ventana_grafico.winfo_screenheight() // 2) - (alto // 2)
+        ventana_grafico.geometry(f"{ancho}x{alto}+{x}+{y}")
+    
+    def crear_grafico_detallado(self, frame_contenedor):
         """
-        Genera gráficos para visualizar los resultados del análisis multiproducto.
+        Crea un gráfico detallado para mostrar en la ventana separada.
         
         Args:
-            resultados (dict): Diccionario con los resultados del análisis
+            frame_contenedor: Frame donde se mostrará el gráfico
         """
-        # Limpiar el gráfico anterior
-        self.ax.clear()
+        resultados = self.resultados_calculados
+        
+        # Crear figura con dos subplots
+        fig = plt.figure(figsize=(12, 8))
+        
+        # Primer subplot: gráfico de barras de PE por producto
+        ax1 = fig.add_subplot(2, 1, 1)
         
         # Preparar datos para el gráfico
         nombres = [p['nombre'] for p in resultados['productos']]
@@ -351,26 +409,81 @@ class FrameMultiProducto(ttk.Frame):
         x = np.arange(len(nombres))
         width = 0.35
         
-        self.ax.bar(x - width/2, valores, width, label='Valor de Ventas ($)')
+        ax1.bar(x - width/2, valores, width, label='Valor de Ventas ($)', color='steelblue')
         
         # Crear un segundo eje Y para las unidades
-        ax2 = self.ax.twinx()
+        ax2 = ax1.twinx()
         ax2.bar(x + width/2, unidades, width, color='orange', label='Unidades')
         
         # Configurar etiquetas y leyenda
-        self.ax.set_title('Punto de Equilibrio por Producto')
-        self.ax.set_xticks(x)
-        self.ax.set_xticklabels(nombres, rotation=45, ha='right')
-        self.ax.set_ylabel('Valor de Ventas ($)')
-        ax2.set_ylabel('Unidades')
+        ax1.set_title('Punto de Equilibrio por Producto', fontsize=14)
+        ax1.set_xlabel('Productos', fontsize=12)
+        ax1.set_xticks(x)
+        ax1.set_xticklabels(nombres, rotation=45, ha='right')
+        ax1.set_ylabel('Valor de Ventas ($)', fontsize=12, color='steelblue')
+        ax2.set_ylabel('Unidades', fontsize=12, color='orange')
+        
+        # Añadir valores encima de las barras
+        for i, v in enumerate(valores):
+            ax1.text(i - width/2, v + 0.01 * max(valores), f"${v:.0f}", 
+                    ha='center', va='bottom', fontsize=9, color='black', fontweight='bold')
+        
+        for i, u in enumerate(unidades):
+            ax2.text(i + width/2, u + 0.01 * max(unidades), f"{u:.1f}", 
+                    ha='center', va='bottom', fontsize=9, color='black', fontweight='bold')
         
         # Combinar leyendas
-        lines1, labels1 = self.ax.get_legend_handles_labels()
+        lines1, labels1 = ax1.get_legend_handles_labels()
         lines2, labels2 = ax2.get_legend_handles_labels()
-        self.ax.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+        ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
         
-        # Ajustar diseño
+        # Segundo subplot: gráfico de pastel para la distribución del valor total
+        ax3 = fig.add_subplot(2, 1, 2)
+        
+        # Preparar datos para el gráfico de pastel
+        etiquetas = [p['nombre'] for p in resultados['productos']]
+        valores_pastel = [p['pe_valor'] for p in resultados['productos']]
+        
+        # Acortar nombres muy largos
+        etiquetas = [n[:15] + "..." if len(n) > 15 else n for n in etiquetas]
+        
+        # Crear colores para cada porción
+        colores = plt.cm.viridis(np.linspace(0, 0.9, len(etiquetas)))
+        
+        # Calcular porcentajes para mostrar en las etiquetas
+        total = sum(valores_pastel)
+        porcentajes = [100 * v / total for v in valores_pastel]
+        
+        # Crear etiquetas con porcentajes
+        etiquetas_con_pct = [f"{e} ({p:.1f}%)" for e, p in zip(etiquetas, porcentajes)]
+        
+        # Crear gráfico de pastel
+        wedges, texts, autotexts = ax3.pie(
+            valores_pastel, 
+            labels=etiquetas_con_pct, 
+            autopct='%1.1f%%',
+            startangle=90,
+            colors=colores,
+            wedgeprops={'width': 0.5, 'edgecolor': 'w'},
+            textprops={'fontsize': 10}
+        )
+        
+        # Configurar título
+        ax3.set_title('Distribución del Valor de Ventas en Punto de Equilibrio', fontsize=12)
+        
+        # Añadir leyenda
+        ax3.legend(wedges, etiquetas_con_pct, title="Productos", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
+        
+        # Ajustar layout
         plt.tight_layout()
         
-        # Actualizar el canvas
-        self.canvas.draw()
+        # Crear canvas para mostrar la figura
+        canvas = FigureCanvasTkAgg(fig, frame_contenedor)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        
+        # Añadir barra de herramientas de navegación
+        from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
+        toolbar = NavigationToolbar2Tk(canvas, frame_contenedor)
+        toolbar.update()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)

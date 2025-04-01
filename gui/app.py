@@ -222,10 +222,12 @@ class AplicacionPuntoEquilibrio:
         """Maneja el evento de cambio de pestaña."""
         # Obtener el índice de la pestaña seleccionada
         tab_index = self.notebook.index(self.notebook.select())
+        tab_id = self.notebook.select()
+        tab_name = self.notebook.tab(tab_id, "text")
         
         # Si se selecciona una pestaña diferente a la de datos de entrada
         # y no hay resultados calculados, mostrar un mensaje
-        if tab_index > 0 and self.modelo["analizador"] is None:
+        if tab_index > 0 and self.modelo["analizador"] is None and tab_name != "Análisis Multiproducto":
             messagebox.showinfo(
                 "Información requerida", 
                 "Primero debe ingresar los datos y calcular el punto de equilibrio."

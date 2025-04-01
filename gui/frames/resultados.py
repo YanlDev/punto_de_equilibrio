@@ -90,19 +90,21 @@ class FrameResultados(ttk.Frame):
         self.lbl_gao = ttk.Label(self.frame_utilidad, text="-", style="Result.TLabel")
         self.lbl_gao.grid(row=1, column=1, padx=10, pady=10, sticky="w")
         
+        # Frame para botones de acción
+        self.frame_botones = ttk.Frame(self)
+        self.frame_botones.grid(row=4, column=0, pady=30, sticky="ew")
+        self.frame_botones.columnconfigure(0, weight=1)
+        self.frame_botones.columnconfigure(1, weight=1)
+        
         # Agregar botón para generar informe
         self.btn_informe = ttk.Button(
-            self, text="Generar Informe Detallado", command=self.generar_informe)
-        self.btn_informe.grid(row=4, column=0, pady=30)
+            self.frame_botones, text="Generar Informe Detallado", command=self.generar_informe)
+        self.btn_informe.grid(row=0, column=0, padx=10, sticky="e")
         
-        # Área de interpretación
-        frame_interpretacion = ttk.LabelFrame(self, text="Interpretación de Resultados")
-        frame_interpretacion.grid(row=5, column=0, sticky="ew", padx=50, pady=10)
-        frame_interpretacion.columnconfigure(0, weight=1)
-        
-        self.texto_interpretacion = tk.Text(frame_interpretacion, height=8, wrap=tk.WORD)
-        self.texto_interpretacion.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
-        self.texto_interpretacion.config(state=tk.DISABLED)  # Solo lectura
+    
+    def exportar_a_pdf(self):
+        """Exporta los resultados actuales a un archivo PDF."""
+        self.controlador.exportar_pdf()
     
     def actualizar_resultados(self):
         """Actualiza los resultados mostrados con los datos actuales del modelo."""
@@ -133,61 +135,6 @@ class FrameResultados(ttk.Frame):
             self.lbl_gao.config(text="Muy alto (>1000)")
         else:
             self.lbl_gao.config(text=f"{gao:.2f}")
-        
-        # Generar interpretación de resultados
-        self.actualizar_interpretacion()
-    
-    def actualizar_interpretacion(self):
-        """Genera e inserta una interpretación de los resultados actuales."""
-        modelo = self.controlador.modelo
-        resultados = modelo["resultados"]
-        
-        # Habilitar la edición del widget Text
-        self.texto_interpretacion.config(state=tk.NORMAL)
-        self.texto_interpretacion.delete(1.0, tk.END)  # Limpiar contenido anterior
-        
-        # Obtener datos relevantes
-        pe_unidades = resultados["pe_unidades"]
-        pe_valor = resultados["pe_valor"]
-        ratio_mc = resultados["ratio_mc"]
-        unidades_esperadas = modelo["unidades_esperadas"]
-        
-        # Crear texto de interpretación
-        interpretacion = (
-            f"Con un costo fijo de ${modelo['costos_fijos']:.2f}, un precio de venta de "
-            f"${modelo['precio_venta']:.2f} y un costo variable unitario de "
-            f"${modelo['costo_variable']:.2f}, el punto de equilibrio se alcanza al "
-            f"vender {pe_unidades:.2f} unidades, lo que representa un valor de ventas "
-            f"de ${pe_valor:.2f}.\n\n"
-        )
-        
-        # Añadir interpretación sobre el ratio de margen de contribución
-        interpretacion += (
-            f"El ratio de margen de contribución es {ratio_mc * 100:.2f}%, lo que significa "
-            f"que por cada peso de ventas, {ratio_mc * 100:.2f} centavos contribuyen a cubrir "
-            f"los costos fijos y generar utilidades.\n\n"
-        )
-        
-        # Interpretar el margen de seguridad si hay unidades esperadas
-        if unidades_esperadas > 0:
-            margen = resultados["margen_seguridad"]
-            if margen["unidades"] > 0:
-                interpretacion += (
-                    f"Con una proyección de ventas de {unidades_esperadas:.2f} unidades, "
-                    f"existe un margen de seguridad de {margen['unidades']:.2f} unidades "
-                    f"({margen['porcentaje']:.2f}%), lo que indica que las ventas pueden "
-                    f"caer hasta en un {margen['porcentaje']:.2f}% antes de incurrir en pérdidas.\n\n"
-                )
-            else:
-                interpretacion += (
-                    f"La proyección de ventas ({unidades_esperadas:.2f} unidades) es menor "
-                    f"que el punto de equilibrio ({pe_unidades:.2f} unidades), lo que indica "
-                    f"que con este nivel de ventas se incurrirá en pérdidas.\n\n"
-                )
-        
-        # Añadir la interpretación al widget
-        self.texto_interpretacion.insert(tk.END, interpretacion)
-        self.texto_interpretacion.config(state=tk.DISABLED)  # Volver a solo lectura
     
     def generar_informe(self):
         """Genera un informe detallado de los resultados."""
